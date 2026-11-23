@@ -5,6 +5,7 @@ import {
   Leaf,
   ArrowUpRight,
   CheckCircle2,
+  Printer,
   X,
 } from "lucide-react";
 import { CatalogPanel, puzzles } from "../features/catalog";
@@ -12,10 +13,13 @@ import { BoardPanel } from "../features/board";
 import { AssistPanel } from "../features/assist";
 import { JournalPanel } from "../features/journal";
 import { GalleryPanel } from "../features/gallery";
+import { WorkbookPanel } from "../features/workbook";
 import { useGame } from "./useGame";
 export function App() {
   const game = useGame();
-  const [page, setPage] = useState<"play" | "gallery">("play");
+  const [page, setPage] = useState<"play" | "gallery" | "workbook">(() =>
+    location.hash.startsWith("#/workbook/") ? "workbook" : "play",
+  );
   const [resetting, setResetting] = useState(false);
   const open = (id: string) => {
     game.dispatch({ type: "open", id });
@@ -44,6 +48,14 @@ export function App() {
           <Images size={21} />
           <span>展柜</span>
         </button>
+        <button
+          className={page === "workbook" ? "active" : ""}
+          onClick={() => setPage("workbook")}
+          aria-label="纸面题册"
+        >
+          <Printer size={21} />
+          <span>题册</span>
+        </button>
         <span className="rail-bottom">
           <Leaf size={20} />
           <span>慢一点</span>
@@ -67,7 +79,9 @@ export function App() {
               <h2>
                 {page === "play"
                   ? "在数字之间，发现图案。"
-                  : "让每一次发现，都有归处。"}
+                  : page === "gallery"
+                    ? "让每一次发现，都有归处。"
+                    : "把一格一格，带到纸上。"}
               </h2>
             </div>
             <div className="intro-note">
@@ -133,11 +147,18 @@ export function App() {
                 </button>
               </div>
             </>
-          ) : (
+          ) : page === "gallery" ? (
             <GalleryPanel
               document={game.document}
               puzzles={puzzles}
               onOpen={open}
+            />
+          ) : (
+            <WorkbookPanel
+              document={game.document}
+              puzzles={puzzles}
+              onCommit={game.commitPaper}
+              onOpenPuzzle={open}
             />
           )}
           <footer>

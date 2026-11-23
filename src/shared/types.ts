@@ -45,4 +45,30 @@ export type GameAction =
   | { type: "hint"; index: number; mark: Mark }
   | { type: "check" }
   | { type: "tick" }
-  | { type: "reset" };
+  | { type: "reset" }
+  | {
+      /**
+       * Atomic paper-to-screen transcription. `version` pins the workbook to
+       * the exact printed puzzle, `expectedMarks` is the live board the user
+       * reconciled against. The reducer refuses the batch if either changed,
+       * so a same-titled replacement can never receive the marks.
+       */
+      type: "paper";
+      puzzleId: string;
+      version: string;
+      expectedMarks: Mark[];
+      marks: Mark[];
+    }
+  | {
+      /**
+       * All-or-nothing transcription for a whole workbook. Every batch is
+       * validated before any is applied.
+       */
+      type: "paperBatch";
+      batches: {
+        puzzleId: string;
+        version: string;
+        expectedMarks: Mark[];
+        marks: Mark[];
+      }[];
+    };

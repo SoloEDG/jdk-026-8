@@ -1,7 +1,13 @@
 import { useEffect, useReducer, useState, useRef } from "react";
 import { findPuzzle, puzzles } from "../features/catalog";
 import { inspect, nextHint } from "../features/assist";
-import { loadDocument, saveDocument } from "../features/journal";
+import {
+  loadDocument,
+  saveDocument,
+  wouldRegisterSolve,
+} from "../features/journal";
+import type { ReconcileResult } from "../features/workbook/model/workbook";
+import { isSolved, newSession } from "../shared/document";
 import { transition } from "./reducer";
 export function useGame() {
   const [initial] = useState(() => loadDocument(puzzles));
@@ -57,6 +63,48 @@ export function useGame() {
         : "已填写的标记都正确，继续你的发现吧。",
     );
   };
+
+  /**
+   * Apply a reviewed paper batch. The reducer re-validates every puzzle
+   * version and the live board; `accepted:false` means it refused atomically.
+   */
+  const commitPaper = (
+    result: ReconcileResult,
+    resolve: Record<string, "paper" | "screen">,
+  ): { accepted: boolean; solved: string[] } => {
+    const batches = result.batches.filter(
+      (batch) => resolve[batch.puzzleId] !== "screen",
+    );
+    if (!batches.length) return { accepted: true, solved: [] };
+    const next = transition(
+      document,
+      { type: "paperBatch", batches },
+      puzzles,
+    );
+    if (next === document) return { accepted: false, solved: [] };
+    dispatch({ type: "paperBatch", batches });
+    const solved = batches
+      .filter((batch) => {
+        const target = puzzles.find((p) => p.id === batch.puzzleId);
+        if (!target) return false;
+        const current =
+          document.sessions[batch.puzzleId] ?? newSession(target);
+        const next = { ...current, marks: batch.marks };
+        return wouldRegisterSolve(document, target, {
+          ...next,
+          solved: isSolved(target, next),
+        });
+      })
+      .map(
+        (batch) =>
+          result.batches.find((entry) => entry.puzzleId === batch.puzzleId)
+            ?.label ?? "",
+      );
+    setSaveState("进度已保存");
+    allowSave.current = true;
+    return { accepted: true, solved };
+  };
+
   return {
     document,
     puzzle,
@@ -67,6 +115,7 @@ export function useGame() {
     save,
     hint,
     check,
+    commitPaper,
     clearMessage: () => setMessage(""),
   };
 }

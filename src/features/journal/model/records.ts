@@ -20,3 +20,12 @@ export function registerSolve(
     ],
   };
 }
+
+/** Read-only predicate so callers can report what a batch would solve. */
+export function wouldRegisterSolve(
+  document: GameDocument,
+  puzzle: Puzzle,
+  session: Session,
+): boolean {
+  return session.solved && !document.sessions[puzzle.id]?.solved;
+}
